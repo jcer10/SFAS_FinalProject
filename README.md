@@ -55,7 +55,7 @@ key_publisher node is the one that actually gets key strokes, but both have to b
 
 Once the you've mapped enough of the room, stop the teleoperation and save the map you made:
 ```
-roscd hello_ros
+roscd final_project
 mkdir maps
 cd maps
 rosrun map_server map_saver

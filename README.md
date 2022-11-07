@@ -25,8 +25,8 @@ Note: modify in **navigation.launch** line 25 the location of the move_base.laun
 3. Create an empty folder in final_projects called **maps**.
 4. *Optional* Copy the **final_project_layout.rviz** file. It is an rviz configuration file that already has all the topics to display in rviz, as is shown in the screenshot in the second exercise of the project (week 8). To open in rviz: File > Open config file.
 
-### Run program
-1. First a map has to be created of the room. To do so we need to teleoperate the robot around the room while slam mapping in rviz.
+### Create initial map (manually)
+First a map has to be created of the room. To do so we need to teleoperate the robot around the room while slam mapping in rviz.
 
 Launch the simulation with the following command:
 ```
@@ -53,11 +53,37 @@ rosrun final_project key_publisher.py
 ```
 key_publisher node is the one that actually gets key strokes, but both have to be run.
 
-Once the youve mapped enough of the room, save the map you made:
+Once the you've mapped enough of the room, stop the teleoperation and save the map you made:
 ```
 roscd hello_ros
 mkdir maps
 cd maps
 rosrun map_server map_saver
 ```
+
+### Run program
+Once the map is created and saved, stop running the slam mapping for navigation and instead use the navigation.launch.
+```
+roslaunch final_project navigation.launch
+```
+In rviz, add the topics to the Global Coastmap and Local CoastMap.
+
+Run the following command to see the camera output of the robot
+```
+roslaunch final_project qr_visp.launch
+```
+Then run the **main.py** script that will make the robot start wandering and reading qr codes (if it's not stupid enough to run into a corner and get stuck)
+```
+rosrun final_project main.py
+```
+
+
+
+
+
+
+
+
+
+
 

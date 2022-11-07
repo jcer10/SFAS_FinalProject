@@ -6,7 +6,7 @@ The main.py file contains the script of the main node, which subscribes to:
 and publishes to:
   - /cmd_vel (to move the robot)
 
-###to be implemented:
+### to be implemented:
 Subscribe to /visp_auto_tracker/object_position to obtain the QR's position in global frame.
 
 ## Instructions to run program:

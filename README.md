@@ -17,9 +17,9 @@ In the **launch** folder copy from hello_ros/launch:
   - navigation.launch
 
 Note: modify in navigation.launch line 25 the location of the move_base.launch.xml
-'''
+```
   <include file="$(find final_project)/launch/move_base.launch.xml">
-'''
+```
 
 Launch the simulation with the following command:
 '''

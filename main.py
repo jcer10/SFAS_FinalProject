@@ -2,7 +2,7 @@
 # BEGIN ALL
 from extract_by_name import extract_by_name
 import rospy
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, PoseStamped
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import String
 
@@ -28,7 +28,7 @@ def qr_check_callback_factory(qr_array):
         s_split = s.split("\r\n")
 
         print("here")
-        print(s_split)
+        #print(s_split)
 
         b = []
 
@@ -43,22 +43,22 @@ def qr_check_callback_factory(qr_array):
         L = b[5] 
 
         model_states = rospy.wait_for_message('/gazebo/model_states/', ModelStates, 5)
-        scan_data = rospy.wait_for_message('scan', LaserScan, 5)
-
-        tmp=[msg.ranges[0]]
-        for i in range(1, 11):
-          tmp.append(scan_data.ranges[i])
-        for i in range(len(scan_data.ranges)-11, len(msg.ranges)):
-          tmp.append(scan_data.ranges[i])
-        dist = min(tmp)
+        QRpose_data = rospy.wait_for_message('/visp_auto_tracker/object_position', PoseStamped, 5)
+        #print(QRpose_data)
+        #print(dir(QRpose_data))
 
         robot = extract_by_name(
             model_states, starts_with="turtlebot3_burger")[0]
-
+        #print(robot)
+        robot=robot[1]
         robot_pose = robot.position
-        robot_rot = tf_conversions.transformations.quaternion_matrix(robot.orientation.x, robot.orientation.y, robot.orientation.z, robot.orientation.w)
+        qr_pose=QRpose_data.pose
+        
+        
+        robot_rot = tf_conversions.transformations.quaternion_matrix([robot.orientation.x, robot.orientation.y, robot.orientation.z, robot.orientation.w])
+        print(qr_pose.position)
 
-        qr_world_coords = np.array([[robot_pose.x], [robot_pose.y], [robot_pose.z]]) + robot_rot[:3, :3] * np.array([dist], [0], [0])
+        qr_world_coords = np.array([[robot_pose.x], [robot_pose.y], [robot_pose.z]]) + robot_rot[:3, :3] * np.array([[1], [0], [0]])
 
         matches = [x for x in qr_array if x.id == N]
 
@@ -75,7 +75,7 @@ def qr_check_callback_factory(qr_array):
 
 
 
-        print(matched_qr.letter)
+        #print(matched_qr.letter)
         
     return(qr_check_callback)
 
@@ -114,7 +114,7 @@ rate = rospy.Rate(60)
 # State: Wander
 while not rospy.is_shutdown():
 
-
+  #print(qr_array)
   #print g_range_ahead
   if g_range_ahead < 0.8:
     # TURN

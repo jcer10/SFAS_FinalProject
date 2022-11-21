@@ -227,7 +227,7 @@ initialized_qrs = [init_qr for init_qr in qr_array if init_qr.is_initialized]
 #     print(qr.world_coords.x)
 #     print(qr.world_coords.y)
 
-M, s, t = calcTransformParams(*initialized_qrs)
+M, s, t = calcTransformParams(initialized_qrs[0], initialized_qrs[1])
 
 
 # def createNParr(a, b):

@@ -246,11 +246,11 @@ M, s, t = calcTransformParams(*initialized_qrs)
 
 # print(M)
 # print(t)
-qrs_W = [convertLtoW(qr, M, s, t) for qr in qrs]
+# qrs_W = [convertLtoW(qr, M, s, t) for qr in qrs]
 
-for i, qr in enumerate(qrs_W):
-    print("marker {}:".format(i))
-    print(qr)
+# for i, qr in enumerate(qrs_W):
+#     print("marker {}:".format(i))
+#     print(qr)
 
 # State: Find other QRs
 while not rospy.is_shutdown():

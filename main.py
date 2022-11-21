@@ -57,7 +57,6 @@ def qr_check_callback_factory(qr_array, robot_state):
                 print("qr found")
 
             else:
-                print("here")
                 model_states = rospy.wait_for_message(
                     "/gazebo/model_states/", ModelStates, 5
                 )
@@ -77,7 +76,7 @@ def qr_check_callback_factory(qr_array, robot_state):
                     and robot_twist.angular.y < eps
                     and robot_twist.angular.z < eps
                 )
-                print(robot_twist)
+                # print(robot_twist)
                 # print(robot_twist.linear.x < eps)
                 if not robot_state.found_qr_static and robot_static:
                     robot_state.found_qr_static = True
@@ -174,14 +173,14 @@ while not rospy.is_shutdown():
 
     if not robot_state.found_qr:
         if robot_state.driving_forward:
-            print("driving forward")
+            # print("driving forward")
             twist.linear.x = 0.4
             twist.angular.z = 0.0
         else:
-            print("rotating")
+            # print("rotating")
             twist.linear.x = 0.0
             twist.angular.z = 0.4
-            
+
         cmd_vel_pub.publish(twist)
     else:
         twist.linear.x = 0.0

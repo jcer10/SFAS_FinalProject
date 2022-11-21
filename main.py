@@ -11,6 +11,8 @@ import tf_conversions
 
 import numpy as np
 
+import time
+
 
 from gazebo_msgs.msg import ModelStates
 
@@ -19,7 +21,7 @@ from QR import QR
 from calcTransformParams import calcTransformParams, convertLtoW
 
 
-def qr_check_callback_factory(qr_array):
+def qr_check_callback_factory(qr_array, robot_state):
     def qr_check_callback(msg):
 
         if msg.data == "":
@@ -43,53 +45,67 @@ def qr_check_callback_factory(qr_array):
         Y_next = float(b[3])
         L = b[5]
 
-        model_states = rospy.wait_for_message("/gazebo/model_states/", ModelStates, 5)
-        QRpose_data = rospy.wait_for_message(
-            "/visp_auto_tracker/object_position", PoseStamped, 5
-        )
-        # print(QRpose_data)
-        # print(dir(QRpose_data))
-
-        robot = extract_by_name(model_states, starts_with="turtlebot3_burger")[0]
-        # print(robot)
-        robot_pose = robot[1]
-        qr_pose = QRpose_data.pose
-
-        robot_rot = tf_conversions.transformations.quaternion_matrix(
-            [
-                robot_pose.orientation.x,
-                robot_pose.orientation.y,
-                robot_pose.orientation.z,
-                robot_pose.orientation.w,
-            ]
-        )
-        # print("robot=", robot)
-        # print("qr_pose=", qr_pose)
-
-        qr_world_coords = getQRworldCoords(robot_pose, qr_pose)
-
         matches = [x for x in qr_array if x.id == N]
 
         if not matches:
             return
 
         matched_qr = matches[0]
-
         if not matched_qr.is_initialized:
-            print("qr found")
+            if not robot_state.found_qr:
+                robot_state.found_qr = True
+                print("qr found")
 
-        matched_qr.set_attributes(X, Y, qr_world_coords[0], qr_world_coords[1], L)
-        matched_qr.set_initialized()
+            else:
+                print("here")
+                model_states = rospy.wait_for_message(
+                    "/gazebo/model_states/", ModelStates, 5
+                )
 
-        # print("predicted QR=", qr_world_coords[0], qr_world_coords[1])
+                robot = extract_by_name(model_states, starts_with="turtlebot3_burger")[
+                    0
+                ]
+                robot_twist = robot[2]
 
-        matches = [x for x in qr_array if x.id == (N % 5) + 1]
+                eps = 0.01
 
-        matched_qr = matches[0]
+                robot_static =  (
+                        robot_twist.linear.x < eps
+                    and robot_twist.linear.y < eps
+                    and robot_twist.linear.z < eps
+                    and robot_twist.angular.x < eps
+                    and robot_twist.angular.y < eps
+                    and robot_twist.angular.z < eps
+                )
+                print(robot_twist)
+                # print(robot_twist.linear.x < eps)
+                if not robot_state.found_qr_static and robot_static:
+                    robot_state.found_qr_static = True
 
-        matched_qr.set_attributes(X, Y, 0, 0, L)
+                    print("qr found static")
 
-        # print(matched_qr.letter)
+                    QRpose_data = rospy.wait_for_message(
+                        "/visp_auto_tracker/object_position", PoseStamped, 5
+                    )
+                    robot_pose = robot[1]
+                    qr_pose = QRpose_data.pose
+
+                    qr_world_coords = getQRworldCoords(robot_pose, qr_pose)
+
+                    matched_qr.set_attributes(
+                        X, Y, qr_world_coords[0], qr_world_coords[1], L
+                    )
+                    matched_qr.set_initialized()
+
+                    # print("predicted QR=", qr_world_coords[0], qr_world_coords[1])
+
+                    matches = [x for x in qr_array if x.id == (N % 5) + 1]
+
+                    matched_qr = matches[0]
+
+                    matched_qr.set_attributes(X_next, Y_next, 0, 0, L)
+
+                    # print(matched_qr.letter)
 
     return qr_check_callback
 
@@ -105,7 +121,16 @@ def scan_callback(msg):
     g_range_ahead = min(tmp)
 
 
+class RobotState:
+    def __init__(self):
+        self.driving_forward = True
+        self.searching_qr = True
+        self.found_qr = False
+        self.found_qr_static = False
+
+
 qr_array = []
+robot_state = RobotState()
 
 for i in range(1, 6):
     qr_array.append(QR(i))
@@ -113,7 +138,9 @@ for i in range(1, 6):
 g_range_ahead = 1  # anything to start
 scan_sub = rospy.Subscriber("scan", LaserScan, scan_callback)
 qr_sub = rospy.Subscriber(
-    "visp_auto_tracker/code_message", String, qr_check_callback_factory(qr_array)
+    "visp_auto_tracker/code_message",
+    String,
+    qr_check_callback_factory(qr_array, robot_state),
 )
 cmd_vel_pub = rospy.Publisher("cmd_vel", Twist, queue_size=1)
 rospy.init_node("wander")
@@ -138,30 +165,62 @@ while not rospy.is_shutdown():
     # print(driving_forward)
     if g_range_ahead < 0.8:
         # TURN
-        driving_forward = False
+        robot_state.driving_forward = False
         # print "Turn"
-
     else:  # we're not driving_forward
-        driving_forward = True  # we're done spinning, time to go forward!
+        robot_state.driving_forward = True  # we're done spinning, time to go forward!
         # DRIVE
         # print "Drive"
 
-    if driving_forward:
-        # print("driving forward")
-        twist.linear.x = 0.4
-        twist.angular.z = 0.0
-    else:
-        # print("not driving forward")
-        twist.linear.x = 0.0
-        twist.angular.z = 0.4
+    if not robot_state.found_qr:
+        if robot_state.driving_forward:
+            print("driving forward")
+            twist.linear.x = 0.4
+            twist.angular.z = 0.0
+        else:
+            print("rotating")
+            twist.linear.x = 0.0
+            twist.angular.z = 0.4
+            
         cmd_vel_pub.publish(twist)
+    else:
+        twist.linear.x = 0.0
+        twist.angular.z = 0.0
+        cmd_vel_pub.publish(twist)
+
+        wait_timer_start = time.time()
+
+        while not robot_state.found_qr_static and (time.time() - wait_timer_start) < 2:
+            # print("waiting")
+            rate.sleep()
+
+        # twist.linear.x = 0.0
+        # twist.angular.z = 0.4
+        # cmd_vel_pub.publish(twist)
+
+        # wait_timer_start = time.time()
+
+        # while not robot_state.found_qr_static and (time.time() - wait_timer_start) < 3:
+        #     rate.sleep()
+
+        # twist.linear.x = 0.0
+        # twist.angular.z = -0.4
+        # cmd_vel_pub.publish(twist)
+
+        # wait_timer_start = time.time()
+
+        # while not robot_state.found_qr_static and (time.time() - wait_timer_start) < 6:
+        #     rate.sleep()
+
+        robot_state.found_qr_static = False
+        robot_state.found_qr = False
 
     rate.sleep()
 
 # Map QR coord fram to world coord frame
-initialised_qrs = [init_qr for init_qr in qr_array if init_qr.is_initialized]
+initialized_qrs = [init_qr for init_qr in qr_array if init_qr.is_initialized]
 
-for qr in initialised_qrs:
+for qr in initialized_qrs:
     print("local")
     print(qr.qr_coords.x)
     print(qr.qr_coords.y)
@@ -169,7 +228,7 @@ for qr in initialised_qrs:
     print(qr.world_coords.x)
     print(qr.world_coords.y)
 
-M, s, t = calcTransformParams(*initialised_qrs)
+M, s, t = calcTransformParams(*initialized_qrs)
 
 
 def createNParr(a, b):
@@ -194,28 +253,28 @@ for i, qr in enumerate(qrs_W):
     print("marker {}:".format(i))
     print(qr)
 
-# # State: Find other QRs
-# while not rospy.is_shutdown():
+# State: Find other QRs
+while not rospy.is_shutdown():
 
 
-#   #print g_range_ahead
-#   if g_range_ahead < 0.8:
-#     # TURN
-#     driving_forward = False
-#     #print "Turn"
+  #print g_range_ahead
+  if g_range_ahead < 0.8:
+    # TURN
+    driving_forward = False
+    #print "Turn"
 
-#   else: # we're not driving_forward
-#     driving_forward = True # we're done spinning, time to go forward!
-#     #DRIVE
-#     #print "Drive"
+  else: # we're not driving_forward
+    driving_forward = True # we're done spinning, time to go forward!
+    #DRIVE
+    #print "Drive"
 
-#   twist = Twist()
-#   if driving_forward:
-#     twist.linear.x = 0.4
-#     twist.angular.z = 0.0
-#   else:
-#     twist.linear.x = 0.0
-#     twist.angular.z = 0.4
-#   cmd_vel_pub.publish(twist)
+  twist = Twist()
+  if driving_forward:
+    twist.linear.x = 0.4
+    twist.angular.z = 0.0
+  else:
+    twist.linear.x = 0.0
+    twist.angular.z = 0.4
+  cmd_vel_pub.publish(twist)
 
-#   rate.sleep()
+  rate.sleep()

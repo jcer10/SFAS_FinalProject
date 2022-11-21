@@ -219,30 +219,30 @@ while not rospy.is_shutdown():
 # Map QR coord fram to world coord frame
 initialized_qrs = [init_qr for init_qr in qr_array if init_qr.is_initialized]
 
-for qr in initialized_qrs:
-    print("local")
-    print(qr.qr_coords.x)
-    print(qr.qr_coords.y)
-    print("world")
-    print(qr.world_coords.x)
-    print(qr.world_coords.y)
+# for qr in initialized_qrs:
+#     print("local")
+#     print(qr.qr_coords.x)
+#     print(qr.qr_coords.y)
+#     print("world")
+#     print(qr.world_coords.x)
+#     print(qr.world_coords.y)
 
 M, s, t = calcTransformParams(*initialized_qrs)
 
 
-def createNParr(a, b):
-    return np.array([[a], [b]])
+# def createNParr(a, b):
+#     return np.array([[a], [b]])
 
 
-qrs = [
-    [3, 1.2],
-    [2.67, 3.23],
-    [0.1, 3.5],
-    [-3.1, 2],
-    [-3.08, 0],
-]
+# qrs = [
+#     [3, 1.2],
+#     [2.67, 3.23],
+#     [0.1, 3.5],
+#     [-3.1, 2],
+#     [-3.08, 0],
+# ]
 
-qrs = [createNParr(*qr) for qr in qrs]
+# qrs = [createNParr(*qr) for qr in qrs]
 
 # print(M)
 # print(t)

@@ -11,9 +11,6 @@ def calcNextQRRadius(P_1, P_2):
     return r
 
 
-# def distance()
-
-
 def calcTransformParams(QR_1, QR_2):
     P_1_W = QR_1.world_coords
     P_2_W = QR_2.world_coords
